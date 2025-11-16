@@ -1,0 +1,15 @@
+WITH t AS (
+  SELECT
+    merchant_id,
+    credit_card_id,
+    amount,
+    tx_time,
+    LAG(tx_time) 
+      OVER (PARTITION BY merchant_id, credit_card_id, amount 
+            ORDER BY tx_time) AS prev_time
+  FROM Transactions
+)
+SELECT COUNT(*) AS repeated_payment_count
+FROM t
+WHERE prev_time IS NOT NULL
+  AND tx_time <= prev_time + INTERVAL '10' MINUTE;
