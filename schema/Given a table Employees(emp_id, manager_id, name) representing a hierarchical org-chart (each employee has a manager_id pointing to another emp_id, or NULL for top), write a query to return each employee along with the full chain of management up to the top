@@ -1,0 +1,23 @@
+WITH RECURSIVE EmpHierarchy AS (
+  SELECT
+    emp_id,
+    manager_id,
+    name,
+    CAST(name AS VARCHAR(1000)) AS chain
+  FROM Employees
+  WHERE manager_id IS NULL
+
+  UNION ALL
+
+  SELECT
+    e.emp_id,
+    e.manager_id,
+    e.name,
+    eh.chain || ' > ' || e.name
+  FROM Employees e
+    JOIN EmpHierarchy eh
+      ON e.manager_id = eh.emp_id
+)
+SELECT emp_id, name, chain
+FROM EmpHierarchy
+ORDER BY chain;
