@@ -1,0 +1,12 @@
+SELECT dept_id, emp_id, name, salary
+FROM (
+  SELECT 
+     dept_id,
+     emp_id,
+     name,
+     salary,
+     DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS dept_rank
+  FROM Employees
+) AS ranked
+WHERE dept_rank <= 3
+ORDER BY dept_id, salary DESC;
