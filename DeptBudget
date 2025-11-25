@@ -1,0 +1,22 @@
+WITH ProjectStats AS (
+  SELECT p.project_id, p.dept_id,
+         p.budget / COUNT(a.emp_id) AS budget_per_emp
+  FROM Projects p
+  JOIN Assignments a
+    ON p.project_id = a.project_id
+  GROUP BY p.project_id, p.dept_id, p.budget
+),
+DeptStats AS (
+  SELECT dept_id,
+         AVG(budget_per_emp) AS avg_budget_per_emp
+  FROM ProjectStats
+  GROUP BY dept_id
+)
+SELECT d.dept_name, ds.avg_budget_per_emp
+FROM DeptStats ds
+JOIN Departments d
+  ON d.dept_id = ds.dept_id
+WHERE ds.avg_budget_per_emp = (
+      SELECT MAX(avg_budget_per_emp)
+      FROM DeptStats
+    );
