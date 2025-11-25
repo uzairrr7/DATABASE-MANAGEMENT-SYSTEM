@@ -1,0 +1,17 @@
+WITH RECURSIVE Subordinates AS (
+  SELECT e.emp_id, e.manager_id, e.name AS emp_name
+  FROM Employees e
+  UNION ALL
+  SELECT e2.emp_id, e2.manager_id, e2.name
+  FROM Employees e2
+    JOIN Subordinates s
+      ON e2.manager_id = s.emp_id
+)
+SELECT m.name AS manager_name,
+       SUM(sal.salary) AS total_subordinate_salary
+FROM Employees m
+JOIN Subordinates s
+  ON s.manager_id = m.emp_id
+JOIN Salaries sal
+  ON sal.emp_id = s.emp_id
+GROUP BY m.name;
