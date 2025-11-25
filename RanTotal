@@ -1,0 +1,23 @@
+WITH RunningTotals AS (
+  SELECT
+    o.customer_id,
+    o.order_date,
+    o.amount,
+    SUM(o.amount) OVER (
+      PARTITION BY o.customer_id
+      ORDER BY o.order_date
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS run_total
+  FROM Orders o
+)
+SELECT customer_id, order_date, run_total
+FROM (
+  SELECT *,
+         ROW_NUMBER() OVER (
+           PARTITION BY customer_id
+           ORDER BY order_date
+         ) AS rn
+  FROM RunningTotals
+  WHERE run_total > 10000
+) t
+WHERE rn = 1;
