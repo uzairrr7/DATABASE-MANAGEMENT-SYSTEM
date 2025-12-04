@@ -1,0 +1,16 @@
+-- start a transaction
+START TRANSACTION;
+
+UPDATE Account
+ SET balance = balance - 200
+ WHERE account_number = 1234;
+
+UPDATE Account
+ SET balance = balance + 200
+ WHERE account_number = 2345;
+
+-- if all good
+COMMIT;
+
+-- if error occurs (in pseudocode)  
+-- ROLLBACK;
