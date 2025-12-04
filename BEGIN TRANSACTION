@@ -1,0 +1,10 @@
+T1: BEGIN TRANSACTION  
+T1: SELECT balance FROM Account WHERE account_number = 100;   -- say reads 1000  
+
+T2: BEGIN TRANSACTION  
+T2: SELECT balance FROM Account WHERE account_number = 100;   -- also reads 1000  
+T2: UPDATE Account SET balance = balance + 200 WHERE account_number = 100;  
+T2: COMMIT;  
+
+T1: UPDATE Account SET balance = balance - 100 WHERE account_number = 100;  
+T1: COMMIT;
