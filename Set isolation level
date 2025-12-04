@@ -1,0 +1,13 @@
+-- Set isolation level to avoid dirty reads
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN TRANSACTION;
+
+-- Read with shared lock
+SELECT * FROM Course WHERE id = 'CS111';
+
+-- Later update
+UPDATE Course
+ SET credits = 8
+ WHERE id = 'CS111';
+
+COMMIT;
