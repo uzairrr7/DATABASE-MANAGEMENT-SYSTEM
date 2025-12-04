@@ -1,0 +1,7 @@
+-- Suppose a table Orders with many rows, and we frequently query by order_date
+CREATE INDEX idx_order_date
+  ON Orders(order_date);
+
+-- Then a query like:
+SELECT * FROM Orders
+WHERE order_date = '2025-12-01';
