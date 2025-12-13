@@ -1,0 +1,4 @@
+SELECT e.emp_id, e.name
+FROM Employee e
+LEFT JOIN Orders o ON e.emp_id = o.emp_id
+WHERE o.emp_id IS NULL;
