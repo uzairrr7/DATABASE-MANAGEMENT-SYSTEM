@@ -1,0 +1,5 @@
+SELECT
+  sale_date,
+  sale_amount,
+  SUM(sale_amount) OVER (ORDER BY sale_date) AS running_total
+FROM Sales;
