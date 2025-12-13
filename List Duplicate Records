@@ -1,0 +1,4 @@
+SELECT emp_id, sale_date, COUNT(*) AS sales_count
+FROM Sales
+GROUP BY emp_id, sale_date
+HAVING COUNT(*) > 1;
