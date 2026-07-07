@@ -1,0 +1,46 @@
+-- ============================================
+-- Indexes and Query Optimization
+-- ============================================
+
+-- Indexes speed up read queries (SELECT/WHERE/JOIN/ORDER BY) at the
+-- cost of slightly slower writes (INSERT/UPDATE/DELETE) and extra storage.
+
+-- 1. Create a basic single-column index
+CREATE INDEX idx_employee_dept ON Employees(department_id);
+
+-- 2. Create a composite (multi-column) index
+-- Useful when queries filter/sort on both columns together
+CREATE INDEX idx_employee_dept_salary ON Employees(department_id, salary);
+
+-- 3. Create a unique index (enforces uniqueness + speeds lookups)
+CREATE UNIQUE INDEX idx_unique_email ON Employees(email);
+
+-- 4. Check if a query is using an index (MySQL/Postgres syntax may vary)
+EXPLAIN
+SELECT * FROM Employees
+WHERE department_id = 3
+ORDER BY salary DESC;
+
+-- 5. Drop an index
+DROP INDEX idx_employee_dept ON Employees;
+
+-- ============================================
+-- Query Optimization Tips
+-- ============================================
+
+-- Avoid SELECT * — only fetch columns you need
+SELECT employee_id, name FROM Employees WHERE department_id = 3;
+
+-- Avoid functions on indexed columns in WHERE clauses (kills index usage)
+-- Bad:  WHERE YEAR(hire_date) = 2024
+-- Good: WHERE hire_date >= '2024-01-01' AND hire_date < '2025-01-01'
+
+-- Use EXISTS instead of IN for large subqueries when checking existence
+SELECT e.name
+FROM Employees e
+WHERE EXISTS (
+    SELECT 1 FROM Orders o WHERE o.employee_id = e.employee_id
+);
+
+-- Use LIMIT when you only need a subset of results
+SELECT * FROM Employees ORDER BY salary DESC LIMIT 10;
