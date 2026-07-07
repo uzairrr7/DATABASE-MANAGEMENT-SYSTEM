@@ -1,0 +1,40 @@
+-- ============================================
+-- Views
+-- ============================================
+
+-- A view is a saved, virtual table based on a SELECT query.
+-- It doesn't store data itself (in a standard view) -- it just
+-- gives you a reusable, simplified way to query underlying tables.
+
+-- 1. Basic view: Employees with department names
+CREATE VIEW EmployeeDeptView AS
+SELECT e.employee_id, e.name, e.salary, d.department_name
+FROM Employees e
+JOIN Departments d ON e.department_id = d.department_id;
+
+-- Query it like a normal table:
+-- SELECT * FROM EmployeeDeptView WHERE salary > 60000;
+
+-- 2. View with aggregation: Department salary summary
+CREATE VIEW DeptSalarySummary AS
+SELECT department_id,
+       COUNT(*) AS total_employees,
+       SUM(salary) AS total_salary,
+       AVG(salary) AS avg_salary
+FROM Employees
+GROUP BY department_id;
+
+-- Query it:
+-- SELECT * FROM DeptSalarySummary ORDER BY avg_salary DESC;
+
+-- 3. Updatable view (simple views on a single table can allow updates)
+CREATE VIEW ActiveEmployees AS
+SELECT employee_id, name, salary, department_id
+FROM Employees
+WHERE status = 'active';
+
+-- This works because the view maps directly back to one table/row:
+-- UPDATE ActiveEmployees SET salary = salary * 1.05 WHERE employee_id = 5;
+
+-- 4. Drop a view
+-- DROP VIEW IF EXISTS EmployeeDeptView;
