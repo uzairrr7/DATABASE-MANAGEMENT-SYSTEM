@@ -1,0 +1,6 @@
+DELETE e1
+FROM Employees e1
+JOIN Employees e2
+  ON e1.name = e2.name
+  AND e1.department_id = e2.department_id
+  AND e1.employee_id > e2.employee_id;
