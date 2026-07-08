@@ -1,0 +1,7 @@
+-- Using DENSE_RANK() window function
+SELECT salary
+FROM (
+    SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk
+    FROM Employees
+) ranked
+WHERE rnk = 3;  -- change 3 to N for the Nth highest salary
