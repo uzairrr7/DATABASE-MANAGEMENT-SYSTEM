@@ -1,0 +1,21 @@
+-- Find top 3 employees by salary in each department
+
+SELECT 
+    department,
+    employee_name,
+    salary,
+    DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) as rank_in_dept
+FROM employees
+WHERE DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) <= 3;
+
+-- OR using CTE for cleaner code:
+
+WITH ranked_employees AS (
+    SELECT 
+        department,
+        employee_name,
+        salary,
+        DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) as rank_in_dept
+    FROM employees
+)
+SELECT * FROM ranked_employees WHERE rank_in_dept <= 3;
