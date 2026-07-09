@@ -1,0 +1,53 @@
+-- METHOD 1: Correlated Subquery (SLOWER)
+SELECT 
+    employee_name,
+    salary,
+    department,
+    (SELECT AVG(salary) FROM employees e2 
+     WHERE e2.department = e1.department) as dept_avg_salary
+FROM employees e1
+WHERE salary > (
+    SELECT AVG(salary) 
+    FROM employees e2 
+    WHERE e2.department = e1.department
+)
+ORDER BY department, salary DESC;
+
+-- METHOD 2: JOIN with Subquery (FASTER)
+SELECT 
+    e.employee_name,
+    e.salary,
+    e.department,
+    dept_stats.avg_salary
+FROM employees e
+JOIN (
+    SELECT department, AVG(salary) as avg_salary
+    FROM employees
+    GROUP BY department
+) dept_stats ON e.department = dept_stats.department
+WHERE e.salary > dept_stats.avg_salary
+ORDER BY e.department, e.salary DESC;
+
+-- METHOD 3: Window Function (OPTIMAL - Fastest)
+WITH dept_avg AS (
+    SELECT 
+        employee_name,
+        salary,
+        department,
+        AVG(salary) OVER (PARTITION BY department) as avg_salary
+    FROM employees
+)
+SELECT 
+    employee_name,
+    salary,
+    department,
+    avg_salary
+FROM dept_avg
+WHERE salary > avg_salary
+ORDER BY department, salary DESC;
+
+-- PERFORMANCE COMPARISON:
+-- Correlated Subquery: O(n²) - Executes subquery for each row
+-- JOIN: O(n log n) - Single aggregation + join
+-- Window Function: O(n) - Single scan with window calculation
+-- WINNER: Window Function (Method 3)
