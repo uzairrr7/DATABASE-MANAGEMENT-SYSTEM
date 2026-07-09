@@ -1,0 +1,52 @@
+-- Scenario: user_id and created_date are frequently queried
+
+-- Strategy 1: Single Column Indexes (Basic)
+CREATE INDEX idx_user_id ON orders(user_id);
+CREATE INDEX idx_created_date ON orders(created_date);
+
+-- Strategy 2: Composite Index (Better for combined queries)
+CREATE INDEX idx_user_created ON orders(user_id, created_date);
+
+-- Strategy 3: Covering Index (Best - includes all needed columns)
+CREATE INDEX idx_user_created_covering ON orders(user_id, created_date) 
+INCLUDE (order_amount, status);
+
+-- QUERY PATTERNS & BEST INDEX:
+
+-- Query 1: Find all orders by specific user
+-- SELECT * FROM orders WHERE user_id = 123;
+-- Best Index: idx_user_id OR idx_user_created
+
+-- Query 2: Date range query
+-- SELECT * FROM orders WHERE created_date BETWEEN '2024-01-01' AND '2024-12-31';
+-- Best Index: idx_created_date OR idx_user_created
+
+-- Query 3: Combined filter (Most common)
+-- SELECT * FROM orders 
+-- WHERE user_id = 123 AND created_date >= '2024-01-01';
+-- Best Index: idx_user_created (composite)
+
+-- Query 4: Range + specific user
+-- SELECT order_amount, status FROM orders 
+-- WHERE user_id = 123 AND created_date BETWEEN '2024-01-01' AND '2024-12-31';
+-- Best Index: idx_user_created_covering (covering index)
+
+-- VIEW EXECUTION PLAN (MySQL):
+EXPLAIN 
+SELECT * FROM orders 
+WHERE user_id = 123 AND created_date >= '2024-01-01'
+ORDER BY created_date DESC;
+
+-- VIEW EXECUTION PLAN (SQL Server):
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+SELECT * FROM orders 
+WHERE user_id = 123 AND created_date >= '2024-01-01';
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+
+-- INDEX SELECTION RECOMMENDATION:
+-- Single queries with both conditions → Use idx_user_created (composite)
+-- Frequent date range + user filter → Use idx_user_created_covering
+-- Heavy SELECT * queries → Avoid covering indexes (overhead)
+-- Mixed workload → Use idx_user_created as compromise
