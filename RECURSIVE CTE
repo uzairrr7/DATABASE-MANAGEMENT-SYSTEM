@@ -1,0 +1,216 @@
+-- Step 1: Create the Employees Table with Manager Hierarchy
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    employee_name VARCHAR(100),
+    job_title VARCHAR(100),
+    manager_id INT,
+    salary DECIMAL(10, 2),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+-- Step 2: Insert Sample Data
+INSERT INTO employees VALUES
+(1, 'Rajesh Kumar', 'CEO', NULL, 500000),
+(2, 'Priya Sharma', 'VP Engineering', 1, 400000),
+(3, 'Amit Patel', 'VP Sales', 1, 380000),
+(4, 'Neha Singh', 'Senior Developer', 2, 150000),
+(5, 'Vikram Joshi', 'Developer', 2, 120000),
+(6, 'Ananya Das', 'Developer', 4, 100000),
+(7, 'Rohan Gupta', 'Sales Manager', 3, 180000),
+(8, 'Zara Khan', 'Sales Executive', 7, 90000);
+
+-- Hierarchy looks like:
+--           Rajesh (CEO)
+--          /          \
+--      Priya          Amit
+--      /   \            |
+--    Neha  Vikram   Rohan
+--     |              |
+--   Ananya        Zara
+
+-- Step 3: Recursive CTE - Find complete manager chain for an employee
+WITH RECURSIVE manager_chain AS (
+    -- BASE CASE: Start with the employee we're interested in
+    SELECT 
+        employee_id,
+        employee_name,
+        job_title,
+        manager_id,
+        salary,
+        1 as level,
+        employee_name as hierarchy_path
+    FROM employees
+    WHERE employee_id = 6  -- Find chain for Ananya Das (employee_id = 6)
+    
+    UNION ALL
+    
+    -- RECURSIVE CASE: Keep going up the hierarchy
+    SELECT 
+        e.employee_id,
+        e.employee_name,
+        e.job_title,
+        e.manager_id,
+        e.salary,
+        mc.level + 1,
+        CONCAT(e.employee_name, ' → ', mc.hierarchy_path)
+    FROM employees e
+    INNER JOIN manager_chain mc ON e.employee_id = mc.manager_id
+)
+SELECT 
+    employee_id,
+    employee_name,
+    job_title,
+    salary,
+    level,
+    hierarchy_path
+FROM manager_chain
+ORDER BY level;
+
+-- OUTPUT for employee_id = 6 (Ananya Das):
+-- 6 | Ananya Das     | Developer       | Level 1 | Ananya Das → Neha Singh → Priya Sharma → Rajesh Kumar
+-- 4 | Neha Singh     | Senior Developer| Level 2 | Neha Singh → Priya Sharma → Rajesh Kumar
+-- 2 | Priya Sharma   | VP Engineering  | Level 3 | Priya Sharma → Rajesh Kumar
+-- 1 | Rajesh Kumar   | CEO             | Level 4 | Rajesh Kumar
+
+-- ============================================================
+
+-- VARIATION 1: Show full hierarchy for all employees
+WITH RECURSIVE manager_chain AS (
+    SELECT 
+        employee_id,
+        employee_name,
+        job_title,
+        manager_id,
+        1 as level,
+        CAST(employee_name AS CHAR(500)) as hierarchy_path
+    FROM employees
+    WHERE manager_id IS NULL  -- Start with CEO
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.employee_name,
+        e.job_title,
+        e.manager_id,
+        mc.level + 1,
+        CONCAT(mc.hierarchy_path, ' → ', e.employee_name)
+    FROM employees e
+    INNER JOIN manager_chain mc ON e.manager_id = mc.employee_id
+)
+SELECT 
+    REPEAT('  ', level - 1) as indent,
+    employee_name,
+    job_title,
+    level as depth
+FROM manager_chain
+ORDER BY hierarchy_path;
+
+-- OUTPUT (Shows tree structure):
+-- Rajesh Kumar (CEO) - Level 1
+--   Priya Sharma (VP Engineering) - Level 2
+--     Neha Singh (Senior Developer) - Level 3
+--       Ananya Das (Developer) - Level 4
+--     Vikram Joshi (Developer) - Level 3
+--   Amit Patel (VP Sales) - Level 2
+--     Rohan Gupta (Sales Manager) - Level 3
+--       Zara Khan (Sales Executive) - Level 4
+
+-- ============================================================
+
+-- VARIATION 2: Get direct and indirect subordinates for a manager
+WITH RECURSIVE subordinates AS (
+    -- BASE CASE: Start with a specific manager
+    SELECT 
+        employee_id,
+        employee_name,
+        job_title,
+        manager_id,
+        1 as level
+    FROM employees
+    WHERE employee_id = 2  -- Find subordinates of Priya (VP Engineering)
+    
+    UNION ALL
+    
+    -- RECURSIVE CASE: Find all employees under this manager
+    SELECT 
+        e.employee_id,
+        e.employee_name,
+        e.job_title,
+        e.manager_id,
+        s.level + 1
+    FROM employees e
+    INNER JOIN subordinates s ON e.manager_id = s.employee_id
+)
+SELECT 
+    employee_id,
+    employee_name,
+    job_title,
+    level,
+    CASE 
+        WHEN level = 1 THEN 'Manager'
+        WHEN level = 2 THEN 'Direct Report'
+        ELSE 'Indirect Report'
+    END as relation_type
+FROM subordinates
+ORDER BY level, employee_name;
+
+-- OUTPUT (Shows Priya's team):
+-- 2 | Priya Sharma   | VP Engineering  | 1 | Manager
+-- 4 | Neha Singh     | Senior Developer| 2 | Direct Report
+-- 5 | Vikram Joshi   | Developer       | 2 | Direct Report
+-- 6 | Ananya Das     | Developer       | 3 | Indirect Report
+
+-- ============================================================
+
+-- VARIATION 3: Count depth and show team size
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        employee_name,
+        job_title,
+        manager_id,
+        1 as level
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.employee_name,
+        e.job_title,
+        e.manager_id,
+        oh.level + 1
+    FROM employees e
+    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+)
+SELECT 
+    employee_id,
+    employee_name,
+    job_title,
+    level,
+    (SELECT COUNT(*) FROM org_hierarchy oh2 
+     WHERE oh2.manager_id = oh1.employee_id) as direct_reports
+FROM org_hierarchy oh1
+ORDER BY level, employee_name;
+
+-- OUTPUT:
+-- 1 | Rajesh Kumar | CEO             | 1 | 2 direct reports
+-- 2 | Priya Sharma | VP Engineering  | 2 | 2 direct reports
+-- 3 | Amit Patel   | VP Sales        | 2 | 1 direct report
+-- 4 | Neha Singh   | Senior Dev      | 3 | 1 direct report
+-- 5 | Vikram Joshi | Developer       | 3 | 0 direct reports
+-- 6 | Ananya Das   | Developer       | 4 | 0 direct reports
+-- 7 | Rohan Gupta  | Sales Manager   | 3 | 1 direct report
+-- 8 | Zara Khan    | Sales Executive | 4 | 0 direct reports
+
+-- ============================================================
+
+-- KEY CONCEPTS EXPLAINED:
+-- 1. BASE CASE: WHERE clause filters starting point
+-- 2. RECURSIVE CASE: UNION ALL joins with previous result set
+-- 3. Anchor Member: Initial SELECT before UNION ALL
+-- 4. Recursive Member: SELECT after UNION ALL that references itself
+-- 5. Termination: When no more rows match the JOIN condition
+-- 6. MUST have termination condition to avoid infinite loops!
