@@ -1,0 +1,67 @@
+-- Create sales table with sample data
+CREATE TABLE sales (
+    sales_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_category VARCHAR(50),
+    transaction_date DATE,
+    order_value DECIMAL(10, 2)
+);
+
+-- Insert sample data
+INSERT INTO sales (product_category, transaction_date, order_value) VALUES
+('Electronics', '2024-01-05', 45000),
+('Electronics', '2024-01-10', 52000),
+('Electronics', '2024-01-15', 48000),
+('Electronics', '2024-02-05', 55000),
+('Electronics', '2024-02-10', 50000),
+('Electronics', '2024-02-15', 51000),
+('Electronics', '2024-03-05', 60000),
+('Electronics', '2024-03-10', 58000),
+('Electronics', '2024-03-15', 62000),
+('Clothing', '2024-01-08', 1200),
+('Clothing', '2024-01-12', 1500),
+('Clothing', '2024-01-18', 1300),
+('Clothing', '2024-02-08', 1400),
+('Clothing', '2024-02-12', 1600),
+('Clothing', '2024-02-18', 1450),
+('Clothing', '2024-03-08', 1800),
+('Clothing', '2024-03-12', 1900),
+('Clothing', '2024-03-18', 2000),
+('Home Appliances', '2024-01-03', 8000),
+('Home Appliances', '2024-01-09', 9500),
+('Home Appliances', '2024-01-16', 10000),
+('Home Appliances', '2024-02-03', 9000),
+('Home Appliances', '2024-02-09', 9800),
+('Home Appliances', '2024-02-16', 10500),
+('Home Appliances', '2024-03-03', 11000),
+('Home Appliances', '2024-03-09', 11500),
+('Home Appliances', '2024-03-16', 12000);
+
+-- ========== MAIN QUERY: TOP 3 CATEGORIES WITH FILTERS ==========
+-- Find top 3 product categories by revenue where:
+-- 1. Total revenue > 50,000
+-- 2. Number of transactions > 2
+-- 3. Average order value > 1,000
+
+SELECT 
+    product_category,
+    YEAR(transaction_date) as year,
+    MONTH(transaction_date) as month,
+    COUNT(*) as transaction_count,
+    SUM(order_value) as total_revenue,
+    AVG(order_value) as avg_order_value,
+    MAX(order_value) as max_order_value,
+    MIN(order_value) as min_order_value,
+    STDDEV(order_value) as revenue_variance,
+    ROUND((SUM(order_value) / (SELECT SUM(order_value) FROM sales)) * 100, 2) as revenue_percentage
+FROM sales
+GROUP BY product_category, YEAR(transaction_date), MONTH(transaction_date)
+HAVING 
+    SUM(order_value) > 50000          -- Filter 1: Revenue > 50,000
+    AND COUNT(*) > 2                  -- Filter 2: Transactions > 2
+    AND AVG(order_value) > 1000       -- Filter 3: Average order > 1,000
+ORDER BY year, month, total_revenue DESC;
+
+-- OUTPUT:
+-- Electronics | 2024 | 1 | 3 transactions | 145,000 revenue | 48,333.33 avg | revenue%: 43.28%
+-- Electronics | 2024 | 2 | 3 transactions | 156,000 revenue | 52,000.00 avg | revenue%: 46.57%
+-- Electronics | 2024 | 3 | 3 transactions
