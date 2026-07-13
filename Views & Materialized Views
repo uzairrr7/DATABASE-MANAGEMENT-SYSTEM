@@ -1,0 +1,143 @@
+
+-- Step 1: Create base tables
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(100),
+    category VARCHAR(50)
+);
+ 
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    product_id INT,
+    order_date DATE,
+    quantity INT,
+    price DECIMAL(10, 2),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+ 
+INSERT INTO products VALUES
+(1, 'Laptop', 'Electronics'),
+(2, 'Mouse', 'Electronics'),
+(3, 'Shirt', 'Clothing'),
+(4, 'Jeans', 'Clothing'),
+(5, 'Book', 'Books');
+ 
+INSERT INTO orders VALUES
+(101, 1, '2024-01-15', 2, 50000),
+(102, 2, '2024-01-20', 5, 1000),
+(103, 3, '2024-02-10', 10, 500),
+(104, 1, '2024-02-15', 1, 50000),
+(105, 4, '2024-03-05', 3, 1500),
+(106, 5, '2024-03-10', 20, 300),
+(107, 1, '2024-03-20', 1, 50000);
+ 
+-- -------- APPROACH 1: REGULAR VIEW (Dynamic, Always Current) --------
+CREATE VIEW sales_by_category_monthly AS
+SELECT 
+    YEAR(o.order_date) as year,
+    MONTH(o.order_date) as month,
+    p.category,
+    COUNT(o.order_id) as transaction_count,
+    SUM(o.quantity * o.price) as total_revenue,
+    AVG(o.quantity * o.price) as avg_order_value,
+    MAX(o.quantity * o.price) as max_order_value,
+    MIN(o.quantity * o.price) as min_order_value
+FROM orders o
+JOIN products p ON o.product_id = p.product_id
+GROUP BY YEAR(o.order_date), MONTH(o.order_date), p.category;
+ 
+-- Query the view
+SELECT * FROM sales_by_category_monthly
+WHERE category = 'Electronics'
+ORDER BY year, month;
+ 
+-- -------- APPROACH 2: MATERIALIZED VIEW (Cached, Periodic Refresh) --------
+-- Step 1: Create physical table to store materialized view data
+CREATE TABLE mv_sales_by_category_monthly (
+    year INT,
+    month INT,
+    category VARCHAR(50),
+    transaction_count INT,
+    total_revenue DECIMAL(15, 2),
+    avg_order_value DECIMAL(10, 2),
+    max_order_value DECIMAL(10, 2),
+    min_order_value DECIMAL(10, 2),
+    refresh_timestamp TIMESTAMP,
+    PRIMARY KEY (year, month, category)
+);
+ 
+-- Step 2: Create procedure to populate materialized view
+CREATE PROCEDURE refresh_mv_sales_by_category()
+BEGIN
+    -- Delete old data
+    DELETE FROM mv_sales_by_category_monthly;
+    
+    -- Insert fresh data
+    INSERT INTO mv_sales_by_category_monthly
+    SELECT 
+        YEAR(o.order_date) as year,
+        MONTH(o.order_date) as month,
+        p.category,
+        COUNT(o.order_id) as transaction_count,
+        SUM(o.quantity * o.price) as total_revenue,
+        AVG(o.quantity * o.price) as avg_order_value,
+        MAX(o.quantity * o.price) as max_order_value,
+        MIN(o.quantity * o.price) as min_order_value,
+        NOW()
+    FROM orders o
+    JOIN products p ON o.product_id = p.product_id
+    GROUP BY YEAR(o.order_date), MONTH(o.order_date), p.category;
+    
+    SELECT 'Materialized View Refreshed Successfully' as status;
+END;
+ 
+-- Step 3: Execute the refresh procedure
+CALL refresh_mv_sales_by_category();
+ 
+-- Query the materialized view (much faster)
+SELECT * FROM mv_sales_by_category_monthly
+WHERE category = 'Electronics'
+ORDER BY year, month;
+ 
+-- -------- APPROACH 3: TOP 3 CATEGORIES PERFORMANCE OPTIMIZATION --------
+CREATE VIEW top_3_categories_view AS
+SELECT 
+    year,
+    month,
+    category,
+    transaction_count,
+    total_revenue,
+    avg_order_value
+FROM (
+    SELECT 
+        YEAR(o.order_date) as year,
+        MONTH(o.order_date) as month,
+        p.category,
+        COUNT(o.order_id) as transaction_count,
+        SUM(o.quantity * o.price) as total_revenue,
+        AVG(o.quantity * o.price) as avg_order_value,
+        ROW_NUMBER() OVER (PARTITION BY YEAR(o.order_date), MONTH(o.order_date) 
+                          ORDER BY SUM(o.quantity * o.price) DESC) as rank
+    FROM orders o
+    JOIN products p ON o.product_id = p.product_id
+    GROUP BY YEAR(o.order_date), MONTH(o.order_date), p.category
+) ranked_data
+WHERE rank <= 3;
+ 
+-- Query top 3 categories
+SELECT * FROM top_3_categories_view
+ORDER BY year, month, total_revenue DESC;
+ 
+-- -------- PERFORMANCE COMPARISON --------
+-- Regular View: Executes query every time (slower for complex queries)
+-- Materialized View: Reads pre-computed data (faster, but stale data possible)
+ 
+-- Check materialized view refresh timestamp
+SELECT * FROM mv_sales_by_category_monthly;
+ 
+-- Schedule automatic refresh (MySQL example using event)
+CREATE EVENT refresh_materialized_view_daily
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_TIMESTAMP
+DO
+    CALL refresh_mv_sales_by_category();
