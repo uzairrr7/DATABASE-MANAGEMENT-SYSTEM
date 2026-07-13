@@ -1,0 +1,142 @@
+-- Create employee table
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    employee_name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+ 
+-- Create audit log table for salary changes
+CREATE TABLE salary_audit (
+    audit_id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_id INT,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    changed_date TIMESTAMP,
+    changed_by VARCHAR(100),
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+ 
+-- Create customers and orders tables
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    customer_name VARCHAR(100),
+    email VARCHAR(100)
+);
+ 
+CREATE TABLE customer_orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    order_date DATE,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+ 
+CREATE TABLE inventory (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(100),
+    stock_count INT
+);
+ 
+CREATE TABLE order_items (
+    order_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    FOREIGN KEY (order_id) REFERENCES customer_orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES inventory(product_id)
+);
+ 
+-- -------- TRIGGER 1: Log salary changes --------
+CREATE TRIGGER salary_change_audit
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF OLD.salary <> NEW.salary THEN
+        INSERT INTO salary_audit (employee_id, old_salary, new_salary, changed_by)
+        VALUES (NEW.employee_id, OLD.salary, NEW.salary, USER());
+    END IF;
+END;
+ 
+-- Test Trigger 1
+INSERT INTO employees VALUES (1, 'Rahul Singh', 100000, 'IT');
+UPDATE employees SET salary = 120000 WHERE employee_id = 1;
+SELECT * FROM salary_audit; -- Shows the change logged
+ 
+-- -------- TRIGGER 2: Prevent deletion of customers with active orders --------
+CREATE TRIGGER prevent_customer_deletion
+BEFORE DELETE ON customers
+FOR EACH ROW
+BEGIN
+    DECLARE order_count INT;
+    SELECT COUNT(*) INTO order_count 
+    FROM customer_orders 
+    WHERE customer_id = OLD.customer_id;
+    
+    IF order_count > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cannot delete customer with active orders!';
+    END IF;
+END;
+ 
+-- Test Trigger 2
+INSERT INTO customers VALUES (1, 'Raj Kumar', 'raj@example.com');
+INSERT INTO customer_orders VALUES (NULL, 1, '2024-01-15');
+-- This will fail: DELETE FROM customers WHERE customer_id = 1;
+-- Error: Cannot delete customer with active orders!
+ 
+-- -------- TRIGGER 3: Update inventory on order placement --------
+CREATE TRIGGER update_inventory_on_order
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE inventory
+    SET stock_count = stock_count - NEW.quantity
+    WHERE product_id = NEW.product_id;
+END;
+ 
+-- Test Trigger 3
+INSERT INTO inventory VALUES (1, 'Laptop', 50);
+INSERT INTO customer_orders VALUES (NULL, 1, '2024-02-01');
+INSERT INTO order_items VALUES (NULL, 1, 1, 5); -- Orders 5 laptops
+SELECT * FROM inventory; -- stock_count should be 45 now
+ 
+-- -------- STORED PROCEDURE: Process Monthly Salary --------
+CREATE PROCEDURE process_monthly_salary(IN emp_id INT, OUT processed_status VARCHAR(100))
+BEGIN
+    DECLARE emp_salary DECIMAL(10, 2);
+    DECLARE tax_amount DECIMAL(10, 2);
+    DECLARE net_salary DECIMAL(10, 2);
+    DECLARE emp_name VARCHAR(100);
+    
+    -- Get employee details
+    SELECT employee_name, salary INTO emp_name, emp_salary
+    FROM employees
+    WHERE employee_id = emp_id;
+    
+    IF emp_salary IS NULL THEN
+        SET processed_status = 'Employee not found';
+        SELECT processed_status;
+    ELSE
+        -- Calculate tax (assume 10% for simplicity)
+        SET tax_amount = emp_salary * 0.10;
+        SET net_salary = emp_salary - tax_amount;
+        
+        -- Log the transaction
+        INSERT INTO salary_audit (employee_id, old_salary, new_salary, changed_by)
+        VALUES (emp_id, emp_salary, net_salary, 'PAYROLL_SYSTEM');
+        
+        -- Update bank transfer (simulated)
+        SET processed_status = CONCAT(
+            'Salary Processed for ', emp_name, 
+            ' | Gross: ', emp_salary, 
+            ' | Tax: ', tax_amount, 
+            ' | Net: ', net_salary
+        );
+        
+        SELECT processed_status;
+    END IF;
+END;
+ 
+-- Test Stored Procedure
+CALL process_monthly_salary(1, @status);
+SELECT @status;
