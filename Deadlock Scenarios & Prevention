@@ -1,0 +1,118 @@
+-- Create bank accounts table for demonstration
+CREATE TABLE bank_accounts (
+    account_id INT PRIMARY KEY,
+    account_holder VARCHAR(100),
+    balance DECIMAL(15, 2),
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO bank_accounts VALUES
+(1, 'Rahul Kumar', 10000, NOW()),
+(2, 'Priya Singh', 5000, NOW()),
+(3, 'Vikram Patel', 7500, NOW()),
+(4, 'Ananya Gupta', 12000, NOW());
+
+-- Create transaction log for audit trail
+CREATE TABLE transaction_log (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    from_account INT,
+    to_account INT,
+    amount DECIMAL(15, 2),
+    transaction_time TIMESTAMP,
+    status VARCHAR(20)
+);
+
+-- ========== SCENARIO 1: HOW DEADLOCK OCCURS ==========
+-- Deadlock happens when:
+-- Transaction 1 locks Resource A, waits for Resource B
+-- Transaction 2 locks Resource B, waits for Resource A
+-- Both transactions wait indefinitely → DEADLOCK
+
+-- VISUAL REPRESENTATION:
+-- Session 1 (T1)              Session 2 (T2)
+-- -------------------         -------------------
+-- Lock Account 1 ✓             Lock Account 2 ✓
+-- (holding)                    (holding)
+--     ↓                             ↓
+-- Wait for Account 2 ⏳         Wait for Account 1 ⏳
+-- (blocked)                    (blocked)
+--     ↓                             ↓
+--   DEADLOCK! Both waiting for each other
+
+-- EXAMPLE THAT CAUSES DEADLOCK:
+
+-- *** SESSION 1 (Terminal 1) ***
+BEGIN TRANSACTION;
+UPDATE bank_accounts SET balance = balance - 1000 WHERE account_id = 1;
+COMMIT;
+
+-- Wait a moment, then in same session:
+UPDATE bank_accounts SET balance = balance + 1000 WHERE account_id = 2;
+
+-- *** SESSION 2 (Terminal 2 - at same time) ***
+BEGIN TRANSACTION;
+UPDATE bank_accounts SET balance = balance - 500 WHERE account_id = 2;
+
+-- Wait a moment, then in same session:
+UPDATE bank_accounts SET balance = balance + 500 WHERE account_id = 1;
+
+-- RESULT: DEADLOCK!
+-- Session 1: Locked account_id=1, waiting for account_id=2 (held by Session 2)
+-- Session 2: Locked account_id=2, waiting for account_id=1 (held by Session 1)
+
+-- ========== STRATEGY 1: LOCK ORDERING (PREVENTS DEADLOCK) ==========
+-- Always acquire locks in consistent order (smaller ID first)
+-- This eliminates circular wait condition
+
+CREATE PROCEDURE transfer_money_safe(
+    IN from_account INT, 
+    IN to_account INT, 
+    IN amount DECIMAL(15, 2),
+    OUT result_status VARCHAR(200)
+)
+BEGIN
+    DECLARE error_occurred BOOLEAN DEFAULT FALSE;
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET error_occurred = TRUE;
+        ROLLBACK;
+        SET result_status = 'Transaction failed - rolled back due to error';
+    END;
+    
+    START TRANSACTION;
+    
+    -- IMPORTANT: Always lock in order (smaller account_id first)
+    -- This prevents circular deadlock scenarios
+    IF from_account < to_account THEN
+        -- Lock sequence: from_account first, then to_account
+        UPDATE bank_accounts 
+        SET balance = balance - amount 
+        WHERE account_id = from_account;
+        
+        UPDATE bank_accounts 
+        SET balance = balance + amount 
+        WHERE account_id = to_account;
+    ELSE
+        -- Lock sequence: to_account first, then from_account (to maintain order)
+        UPDATE bank_accounts 
+        SET balance = balance + amount 
+        WHERE account_id = to_account;
+        
+        UPDATE bank_accounts 
+        SET balance = balance - amount 
+        WHERE account_id = from_account;
+    END IF;
+    
+    -- Log transaction
+    INSERT INTO transaction_log (from_account, to_account, amount, status)
+    VALUES (from_account, to_account, amount, 'SUCCESS');
+    
+    IF NOT error_occurred THEN
+        COMMIT;
+        SET result_status = CONCAT('Transfer successful: ', amount, ' from account ', 
+                                    from_account, ' to account ', to_account);
+    END IF;
+END;
+
+-- Test the safe procedure
+CALL
