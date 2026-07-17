@@ -1,0 +1,17 @@
+CREATE TABLE Employee (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    department VARCHAR(30)
+);
+
+INSERT INTO Employee VALUES
+(1,'Alice','HR'),
+(2,'Bob','HR'),
+(3,'Charlie','IT'),
+(4,'David','IT'),
+(5,'Eva','Finance');
+
+SELECT department,
+       COUNT(*) AS total_employees
+FROM Employee
+GROUP BY department;
