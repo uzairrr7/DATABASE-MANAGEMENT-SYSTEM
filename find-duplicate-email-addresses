@@ -1,0 +1,18 @@
+CREATE TABLE Users (
+    user_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    email VARCHAR(100)
+);
+
+INSERT INTO Users VALUES
+(1,'Alice','alice@gmail.com'),
+(2,'Bob','bob@gmail.com'),
+(3,'Charlie','alice@gmail.com'),
+(4,'David','david@gmail.com'),
+(5,'Eva','bob@gmail.com');
+
+SELECT email,
+       COUNT(*) AS duplicate_count
+FROM Users
+GROUP BY email
+HAVING COUNT(*) > 1;
