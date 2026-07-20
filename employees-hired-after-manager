@@ -1,0 +1,21 @@
+CREATE TABLE Employee (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    manager_id INT,
+    hire_date DATE
+);
+
+INSERT INTO Employee VALUES
+(1,'Alice',NULL,'2020-01-15'),
+(2,'Bob',1,'2021-03-10'),
+(3,'Charlie',1,'2019-08-20'),
+(4,'David',2,'2022-05-12');
+
+SELECT e.emp_name AS employee,
+       m.emp_name AS manager,
+       e.hire_date,
+       m.hire_date AS manager_hire_date
+FROM Employee e
+JOIN Employee m
+ON e.manager_id = m.emp_id
+WHERE e.hire_date > m.hire_date;
