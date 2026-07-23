@@ -1,0 +1,19 @@
+CREATE TABLE Orders (
+    order_id INT PRIMARY KEY,
+    customer_name VARCHAR(50),
+    amount DECIMAL(10,2)
+);
+
+INSERT INTO Orders VALUES
+(101,'Alice',500),
+(102,'Bob',1000),
+(103,'Alice',700),
+(104,'Charlie',400),
+(105,'Bob',600);
+
+SELECT customer_name,
+       SUM(amount) AS total_spent
+FROM Orders
+GROUP BY customer_name
+ORDER BY total_spent DESC
+LIMIT 1;
