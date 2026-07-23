@@ -1,0 +1,21 @@
+CREATE TABLE Employee (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    manager_id INT,
+    salary INT
+);
+
+INSERT INTO Employee VALUES
+(1,'Alice',NULL,90000),
+(2,'Bob',1,70000),
+(3,'Charlie',1,95000),
+(4,'David',2,60000);
+
+SELECT e.emp_name AS employee,
+       e.salary,
+       m.emp_name AS manager,
+       m.salary AS manager_salary
+FROM Employee e
+JOIN Employee m
+ON e.manager_id = m.emp_id
+WHERE e.salary > m.salary;
