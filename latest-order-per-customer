@@ -1,0 +1,17 @@
+CREATE TABLE Orders (
+    order_id INT PRIMARY KEY,
+    customer_name VARCHAR(50),
+    order_date DATE
+);
+
+INSERT INTO Orders VALUES
+(101,'Alice','2026-01-10'),
+(102,'Alice','2026-02-18'),
+(103,'Bob','2026-01-15'),
+(104,'Bob','2026-03-20'),
+(105,'Charlie','2026-02-11');
+
+SELECT customer_name,
+       MAX(order_date) AS latest_order
+FROM Orders
+GROUP BY customer_name;
