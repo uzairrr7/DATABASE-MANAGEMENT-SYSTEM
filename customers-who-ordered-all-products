@@ -1,0 +1,23 @@
+CREATE TABLE Orders (
+    customer_id INT,
+    product_id INT
+);
+
+INSERT INTO Orders VALUES
+(1,101),
+(1,102),
+(1,103),
+(2,101),
+(2,102),
+(3,101),
+(3,102),
+(3,103);
+
+SELECT customer_id
+FROM Orders
+GROUP BY customer_id
+HAVING COUNT(DISTINCT product_id) =
+(
+    SELECT COUNT(DISTINCT product_id)
+    FROM Orders
+);
