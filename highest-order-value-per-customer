@@ -1,0 +1,17 @@
+CREATE TABLE Orders (
+    order_id INT PRIMARY KEY,
+    customer_name VARCHAR(50),
+    amount DECIMAL(10,2)
+);
+
+INSERT INTO Orders VALUES
+(101,'Alice',500),
+(102,'Alice',900),
+(103,'Bob',700),
+(104,'Bob',1000),
+(105,'Charlie',450);
+
+SELECT customer_name,
+       MAX(amount) AS highest_order
+FROM Orders
+GROUP BY customer_name;
