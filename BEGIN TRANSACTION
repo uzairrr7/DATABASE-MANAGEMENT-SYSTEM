@@ -8,3 +8,5 @@ T2: COMMIT;
 
 T1: UPDATE Account SET balance = balance - 100 WHERE account_number = 100;  
 T1: COMMIT;
+
+
