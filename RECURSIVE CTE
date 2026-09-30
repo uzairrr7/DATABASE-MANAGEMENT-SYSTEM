@@ -8,6 +8,8 @@ CREATE TABLE employees (
     FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
 );
 
+
+
 -- Step 2: Insert Sample Data
 INSERT INTO employees VALUES
 (1, 'Rajesh Kumar', 'CEO', NULL, 500000),
@@ -27,6 +29,8 @@ INSERT INTO employees VALUES
 --    Neha  Vikram   Rohan
 --     |              |
 --   Ananya        Zara
+
+
 
 -- Step 3: Recursive CTE - Find complete manager chain for an employee
 WITH RECURSIVE manager_chain AS (
@@ -66,6 +70,8 @@ SELECT
 FROM manager_chain
 ORDER BY level;
 
+
+
 -- OUTPUT for employee_id = 6 (Ananya Das):
 -- 6 | Ananya Das     | Developer       | Level 1 | Ananya Das → Neha Singh → Priya Sharma → Rajesh Kumar
 -- 4 | Neha Singh     | Senior Developer| Level 2 | Neha Singh → Priya Sharma → Rajesh Kumar
@@ -73,6 +79,8 @@ ORDER BY level;
 -- 1 | Rajesh Kumar   | CEO             | Level 4 | Rajesh Kumar
 
 -- ============================================================
+
+
 
 -- VARIATION 1: Show full hierarchy for all employees
 WITH RECURSIVE manager_chain AS (
@@ -117,6 +125,8 @@ ORDER BY hierarchy_path;
 --       Zara Khan (Sales Executive) - Level 4
 
 -- ============================================================
+
+
 
 -- VARIATION 2: Get direct and indirect subordinates for a manager
 WITH RECURSIVE subordinates AS (
